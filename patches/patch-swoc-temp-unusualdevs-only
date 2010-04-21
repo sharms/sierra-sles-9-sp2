@@ -1,0 +1,66 @@
+diff -Naur a/drivers/usb/storage/initializers.c b/drivers/usb/storage/initializers.c
+--- a/drivers/usb/storage/initializers.c	2009-01-28 10:44:48.000000000 -0800
++++ b/drivers/usb/storage/initializers.c	2009-01-29 14:33:36.000000000 -0800
+@@ -89,3 +89,31 @@
+ 
+ 	return (res ? -1 : 0);
+ }
++
++#define SWIMS_USB_REQUEST_SetSwocMode	0x0B
++#define SWIMS_SET_MODE_Modem		0x0001
++
++/* This function instructs the device to load as a modem device. */
++int sierra_ms_init(struct us_data *us)
++{
++	int result;
++	struct usb_device *udev;
++
++	US_DEBUGP("SWIMS: sierra_ms_init called\n");
++
++	udev = us->pusb_dev;
++
++	/* Force Modem mode */
++	US_DEBUGP("SWIMS: %s", "Forcing Modem Mode\n");
++	result = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
++			SWIMS_USB_REQUEST_SetSwocMode,	/* __u8 request      */
++			USB_TYPE_VENDOR | USB_DIR_OUT,	/* __u8 request type */
++			SWIMS_SET_MODE_Modem,		/* __u16 value       */
++			0x0000,				/* __u16 index       */
++			NULL,				/* void *data        */
++			0,				/* __u16 size 	     */
++			USB_CTRL_SET_TIMEOUT);		/* int timeout       */
++	if (result < 0)
++		US_DEBUGP("SWIMS: Failed to switch to modem mode.\n");
++	return -EIO;
++}
+diff -Naur a/drivers/usb/storage/initializers.h b/drivers/usb/storage/initializers.h
+--- a/drivers/usb/storage/initializers.h	2009-01-28 10:44:47.000000000 -0800
++++ b/drivers/usb/storage/initializers.h	2009-01-29 14:33:41.000000000 -0800
+@@ -52,3 +52,6 @@
+ /* This function is required to activate all four slots on the UCR-61S2B
+  * flash reader */
+ int usb_stor_ucr61s2b_init(struct us_data *us);
++
++/* This function instructs the device to load as a modem device. */
++int sierra_ms_init(struct us_data *us);
+diff -Naur a/drivers/usb/storage/unusual_devs.h b/drivers/usb/storage/unusual_devs.h
+--- a/drivers/usb/storage/unusual_devs.h	2009-01-28 10:44:47.000000000 -0800
++++ b/drivers/usb/storage/unusual_devs.h	2009-01-29 14:33:19.000000000 -0800
+@@ -830,6 +830,17 @@
+ 		US_SC_DEVICE, US_PR_DEVICE, NULL,
+ 		US_FL_MODE_XLATE ),
+ 
++/* Reported by Kevin Lloyd <linux@sierrawireless.com>
++ * Entry is needed for the initializer function override, 
++ * which instructs the device to load as a modem
++ * device.
++ */
++UNUSUAL_DEV(  0x1199, 0x0fff, 0x0000, 0x9999,
++		"Sierra Wireless",
++		"USB MMC Storage",
++		US_SC_DEVICE, US_PR_DEVICE, sierra_ms_init,
++		0),
++
+ #ifdef CONFIG_USB_STORAGE_SDDR55
+ UNUSUAL_DEV(  0x55aa, 0xa103, 0x0000, 0x9999, 
+ 		"Sandisk",
